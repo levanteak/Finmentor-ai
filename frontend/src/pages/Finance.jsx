@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import client from '../api/client'
-import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 
 const EMPLOYMENT_OPTIONS = [
   { value: 'FREELANCE', label: 'Фриланс / Самозанятый' },
@@ -11,36 +11,23 @@ const EMPLOYMENT_OPTIONS = [
 const fmt = n => new Intl.NumberFormat('ru-KZ').format(Math.round(n || 0)) + ' ₸'
 
 export default function Finance() {
-  const { user } = useAuth()
+  const toast = useToast()
   const [records, setRecords] = useState([])
   const [form, setForm] = useState({
     amount: '',
     description: '',
     incomeDate: new Date().toISOString().slice(0, 10),
-    employmentType: user?.employmentType || 'FREELANCE'
+    employmentType: 'FREELANCE'
   })
-  const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    client.get('/finance/income').then(r => setRecords(r.data)).catch(() => {})
+    client.get('/finance/income').then(r => setRecords(r.data)).catch(() => toast('Не удалось загрузить доходы'))
   }, [])
 
-  const handleAmountChange = async val => {
+  const handleAmountChange = val => {
     setForm(p => ({ ...p, amount: val }))
-    if (!val || isNaN(val)) { setPreview(null); return }
-    try {
-      const res = await client.post('/finance/income', {
-        amount: parseFloat(val),
-        description: 'preview',
-        incomeDate: form.incomeDate,
-        employmentType: form.employmentType
-      })
-      setPreview(res.data)
-      // Remove preview record
-      await client.delete?.(`/finance/income/${res.data.id}`).catch(() => {})
-    } catch {}
   }
 
   const handleSubmit = async e => {
@@ -54,9 +41,9 @@ export default function Finance() {
       })
       setRecords(p => [res.data, ...p])
       setForm(p => ({ ...p, amount: '', description: '' }))
-      setPreview(null)
     } catch {
       setError('Ошибка добавления дохода')
+      toast('Не удалось сохранить доход')
     } finally {
       setLoading(false)
     }

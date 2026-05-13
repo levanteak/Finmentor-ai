@@ -35,6 +35,9 @@ public class ChatMessage {
     @JoinColumn(name = "session_id")
     private ChatSession session;
 
+    @Builder.Default
+    private Integer ragChunksUsed = 0;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

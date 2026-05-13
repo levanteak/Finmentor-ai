@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { useAtom } from 'jotai'
 import client from '../api/client'
-import { useAuth } from '../context/AuthContext'
+import { synergyProfileAtom } from '../synergy/store/profileStore'
+import { useToast } from '../context/ToastContext'
 
 const SUGGESTIONS = [
   'Сколько налогов мне нужно заплатить в этом месяце?',
@@ -11,7 +13,8 @@ const SUGGESTIONS = [
 ]
 
 export default function Chat() {
-  const { user } = useAuth()
+  const toast = useToast()
+  const [profile] = useAtom(synergyProfileAtom)
   const [sessions, setSessions] = useState([])
   const [currentSession, setCurrentSession] = useState(null)
   const [messages, setMessages] = useState([])
@@ -34,7 +37,9 @@ export default function Chat() {
       const r = await client.get('/chat/sessions')
       setSessions(r.data)
       if (r.data.length > 0) selectSession(r.data[0])
-    } catch {}
+    } catch {
+      toast('Не удалось загрузить чаты')
+    }
   }
 
   const selectSession = async (session) => {
@@ -70,7 +75,9 @@ export default function Chat() {
         if (updated.length > 0) selectSession(updated[0])
         else { setCurrentSession(null); setMessages([]) }
       }
-    } catch {}
+    } catch {
+      toast('Не удалось удалить чат')
+    }
   }
 
   const send = async text => {
@@ -95,9 +102,14 @@ export default function Chat() {
       const title = res.data.userMessage?.substring(0, 50) || msg.substring(0, 50)
       setSessions(prev => prev.map(s => s.id === session.id ? { ...s, title } : s))
       setMessages(p => [...p, {
-        role: 'ai', content: res.data.aiResponse, id: Date.now() + 1, fromRag: docCount > 0
+        role: 'ai',
+        content: res.data.aiResponse,
+        id: Date.now() + 1,
+        fromRag: (res.data.ragChunksUsed ?? 0) > 0,
+        ragCount: res.data.ragChunksUsed ?? 0,
       }])
     } catch {
+      toast('Ошибка соединения с AI. Попробуйте ещё раз.')
       setMessages(p => [...p, { role: 'ai', content: 'Ошибка соединения с AI.', id: Date.now() + 1 }])
     } finally {
       setLoading(false)
@@ -175,7 +187,7 @@ export default function Chat() {
           {messages.length === 0 && (
             <div style={{ textAlign: 'center', marginTop: 32 }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>🤖</div>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Привет, {user?.name}!</div>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Привет, {profile.name || profile.login}!</div>
               <div style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 20 }}>
                 Задай вопрос про финансы, налоги, кредиты
               </div>
@@ -213,7 +225,7 @@ export default function Chat() {
                 }}>{m.content}</div>
                 {m.role === 'ai' && m.fromRag && (
                   <div style={{ fontSize: 11, color: 'var(--accent)', paddingLeft: 4, opacity: 0.8 }}>
-                    🔍 с учётом ваших документов
+                    🔍 с учётом документов ({m.ragCount} фрагм.)
                   </div>
                 )}
               </div>

@@ -25,6 +25,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    rag_chunks_used: int = 0
 
 
 class AnalyzeRequest(BaseModel):

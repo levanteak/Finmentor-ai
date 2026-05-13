@@ -17,10 +17,8 @@ async def chat(request: ChatRequest):
     static_chunks = chroma_service.search_static_kb(query_embedding, n_results=2)
     rag_chunks = user_chunks + static_chunks
 
-    logger.info("RAG retrieved %d chunks (%d user + %d static) for: '%s'",
+    logger.info("RAG: %d relevant chunks (%d user + %d static) for: '%s'",
                 len(rag_chunks), len(user_chunks), len(static_chunks), request.message[:60])
-    for i, chunk in enumerate(rag_chunks):
-        logger.info("  chunk[%d]: %s", i, chunk[:100].replace("\n", " "))
 
     chat_service = get_chat_service()
     logger.info("Using chat provider: %s", type(chat_service).__name__)
@@ -29,4 +27,4 @@ async def chat(request: ChatRequest):
     user_context = request.user_context.model_dump()
 
     response = await chat_service.chat(user_context, history, request.message, rag_chunks)
-    return ChatResponse(response=response)
+    return ChatResponse(response=response, rag_chunks_used=len(rag_chunks))

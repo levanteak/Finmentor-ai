@@ -3,42 +3,59 @@ version: "3.9"
 services:
   postgres:
     image: postgres:15
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: ai_system
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-ai_system}
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   ai-service:
     build: ./ai-service
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GROQ_API_KEY: ${GROQ_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       CHROMA_PATH: /data/chroma
     volumes:
       - chroma_data:/data/chroma
-    depends_on:
-      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
   backend:
     build: ./backend
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ai_system
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-ai_system}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
       AI_SERVICE_URL: http://ai-service:8000
+      SYNERGY_URL: ${SYNERGY_URL:-http://192.168.7.62:8080}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-finmentor-local-dev-secret-key-must-be-32-chars}
     depends_on:
-      - postgres
-      - ai-service
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
 
 volumes:
   postgres_data:

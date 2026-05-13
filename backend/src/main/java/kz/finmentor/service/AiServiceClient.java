@@ -1,6 +1,7 @@
 package kz.finmentor.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kz.finmentor.dto.AiChatResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -79,7 +80,7 @@ public class AiServiceClient {
         }
     }
 
-    public String chat(Long userId, String message, List<Map<String, String>> history, Map<String, Object> userContext) {
+    public AiChatResult chat(Long userId, String message, List<Map<String, String>> history, Map<String, Object> userContext) {
         try {
             Map<String, Object> request = Map.of(
                     "user_id", userId,
@@ -92,10 +93,13 @@ public class AiServiceClient {
                     new HttpEntity<>(request, jsonHeaders()),
                     Map.class
             );
-            return (String) response.getBody().get("response");
+            Map body = response.getBody();
+            String text = (String) body.get("response");
+            int ragChunksUsed = body.get("rag_chunks_used") instanceof Number n ? n.intValue() : 0;
+            return new AiChatResult(text, ragChunksUsed);
         } catch (Exception e) {
             log.error("AI service chat error: {}", e.getMessage());
-            return "Сервис временно недоступен. Попробуйте позже.";
+            return AiChatResult.fallback();
         }
     }
 

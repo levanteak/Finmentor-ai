@@ -1,52 +1,32 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
-import ProtectedRoute from './components/ProtectedRoute'
+import { ToastProvider } from './context/ToastContext'
 import Layout from './components/Layout'
-import Login from './pages/Login'
-import Register from './pages/Register'
+import SynergyGuard from './pages/SynergyGuard'
 import Dashboard from './pages/Dashboard'
 import Documents from './pages/Documents'
 import Finance from './pages/Finance'
 import Chat from './pages/Chat'
 import KnowledgeBase from './pages/KnowledgeBase'
+import SynergyPage from './pages/SynergyPage'
 
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout><Dashboard /></Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/documents" element={
-            <ProtectedRoute>
-              <Layout><Documents /></Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/finance" element={
-            <ProtectedRoute>
-              <Layout><Finance /></Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/chat" element={
-            <ProtectedRoute>
-              <Layout><Chat /></Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/knowledge-base" element={
-            <ProtectedRoute>
-              <Layout><KnowledgeBase /></Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
+        <ToastProvider>
+        <SynergyGuard>
+          <Routes>
+            <Route path="/" element={<Layout><Dashboard /></Layout>} />
+            <Route path="/documents" element={<Layout><Documents /></Layout>} />
+            <Route path="/finance" element={<Layout><Finance /></Layout>} />
+            <Route path="/chat" element={<Layout><Chat /></Layout>} />
+            <Route path="/knowledge-base" element={<Layout><KnowledgeBase /></Layout>} />
+            <Route path="/synergy" element={<Layout><SynergyPage /></Layout>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SynergyGuard>
+        </ToastProvider>
       </ThemeProvider>
     </BrowserRouter>
   )

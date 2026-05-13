@@ -39,21 +39,26 @@ class ChromaService:
         logger.info("Indexed %d chunks for document %d", len(chunks), document_id)
 
     def search_user_docs(
-        self, user_id: int, query_embedding: list[float], n_results: int = 5
+        self, user_id: int, query_embedding: list[float], n_results: int = 5,
+        distance_threshold: float = 0.65,
     ) -> list[str]:
         try:
             result = self.user_docs.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results,
                 where={"user_id": str(user_id)},
+                include=["documents", "distances"],
             )
-            return result["documents"][0] if result["documents"] else []
+            docs = result["documents"][0] if result["documents"] else []
+            dists = result["distances"][0] if result["distances"] else []
+            return [d for d, dist in zip(docs, dists) if dist < distance_threshold]
         except Exception as e:
             logger.warning("User doc search error: %s", e)
             return []
 
     def search_static_kb(
-        self, query_embedding: list[float], n_results: int = 3
+        self, query_embedding: list[float], n_results: int = 3,
+        distance_threshold: float = 0.65,
     ) -> list[str]:
         try:
             if self.static_kb.count() == 0:
@@ -61,8 +66,11 @@ class ChromaService:
             result = self.static_kb.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results,
+                include=["documents", "distances"],
             )
-            return result["documents"][0] if result["documents"] else []
+            docs = result["documents"][0] if result["documents"] else []
+            dists = result["distances"][0] if result["distances"] else []
+            return [d for d, dist in zip(docs, dists) if dist < distance_threshold]
         except Exception as e:
             logger.warning("Static KB search error: %s", e)
             return []

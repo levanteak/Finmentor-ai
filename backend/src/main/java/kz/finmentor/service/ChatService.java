@@ -73,11 +73,12 @@ public class ChatService {
                 .collect(Collectors.toList());
 
         Map<String, Object> userContext = buildUserContext(user);
-        String aiResponse = aiServiceClient.chat(user.getId(), userMessage, historyMessages, userContext);
+        var aiResult = aiServiceClient.chat(user.getId(), userMessage, historyMessages, userContext);
 
         ChatMessage message = ChatMessage.builder()
                 .userMessage(userMessage)
-                .aiResponse(aiResponse)
+                .aiResponse(aiResult.response())
+                .ragChunksUsed(aiResult.ragChunksUsed())
                 .user(user)
                 .session(session)
                 .build();
@@ -128,7 +129,12 @@ public class ChatService {
     }
 
     private User getUser(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return userRepository.findByEmail(email).orElseGet(() ->
+            userRepository.save(User.builder()
+                .email(email)
+                .name(email.contains("@") ? email.split("@")[0] : email)
+                .password("")
+                .build())
+        );
     }
 }
